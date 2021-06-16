@@ -1,0 +1,73 @@
+jenkins 파이프 라인 구성
+
+1. git repo 구성
+
+2. Maven 옵션(아래 옵션 입력)
+
+-U
+clean
+deploy
+package
+-DskipTests=true
+
+jenkins 기능인 management file에 nexus 정보 세팅 및 maven 고급 옵션에서 설정
+
+<?xml version="1.0" encoding="UTF-8"?>
+<settings>
+  <servers>
+    <server>
+      <id>nexus-repo</id>
+      <username>admin</username>
+      <password>kbsys1234</password>
+    </server>
+  </servers>
+</settings>
+
+
+3. bizmicro-sb git에서 pom.xml 파일에 아래 내용 추가
+
+ 	<distributionManagement>
+		<repository>
+			<id>nexus-repo-public</id>
+			<url>http://nexus-idc.dcos.kr/repository/maven-public/</url>
+		</repository>
+		<snapshotRepository>
+			<id>nexus-repo</id>
+			<name>private-repo</name>
+			<url>http://nexus-idc.dcos.kr/repository/maven-snapshots/</url>
+		</snapshotRepository>
+	</distributionManagement>
+  
+  
+  
+4. 빌드 순서는 framework-> core -> auth 순
+
+앞에 두개는 maven 빌드만, auth는 애플리케이션 컨테이너 생성
+
+
+
+5. auth jenkins 구성(shell) 
+
+아래 내용 토대로 수정해서 세팅
+
+TAG="dev"
+DOCKER_IMAGE=${REGISTRY}/${JOB_BASE_NAME}:${TAG}
+
+# Build
+cd ${WORKSPACE}/${JOB_BASE_NAME}/cicd/dev
+cp -r ${WORKSPACE}/${JOB_BASE_NAME}/target ${WORKSPACE}/${JOB_BASE_NAME}/cicd/dev 
+docker login ${REGISTRY} -u ${REPO_ID} -p ${REPO_PASS}
+docker build -t ${DOCKER_IMAGE} -f Dockerfile_dev .
+docker push ${DOCKER_IMAGE}
+docker rmi ${DOCKER_IMAGE}
+
+# Deploy
+dcos cluster setup ${DCOS_MASTER} --no-check --username=${DCOS_ID} --password=${DCOS_PASS}
+dcos marathon app restart ${DCOS_PATH}
+
+
+6. 빌드
+
+
+
+

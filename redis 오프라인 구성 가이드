@@ -1,0 +1,59 @@
+GCC 설치 이후
+
+tar xvf <redis tar>
+cd <redis file>
+
+make install
+
+mkdir conf
+
+*redis conf 파일 생성
+
+ex)
+port 7100
+cluster-enabled yes
+cluster-config-file nodes_7100.conf
+cluster-node-timeout 5000
+appendonly no
+daemonize yes
+requirepass kbsys1234
+dir /root/redis-5.0.11/data
+
+
+*redis start 스크립트
+
+ex)
+#!/bin/sh
+redis-server /root/redis-5.0.11/conf/redis_7100.conf
+redis-server /root/redis-5.0.11/conf/redis_7101.conf
+redis-server /root/redis-5.0.11/conf/redis_7102.conf
+
+
+*redis stop 스크립트
+
+ex)
+#!/bin/bash
+redis-cli -p 7100 -a kbsys1234 shutdown
+redis-cli -p 7101 -a kbsys1234 shutdown
+redis-cli -p 7102 -a kbsys1234 shutdown
+
+
+클러스터 구성
+
+ex)
+redis-cli --cluster create 110.45.156.133:7600 110.45.156.133:7601 110.45.156.133:7602 -a kbsys1234
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,3 +1,35 @@
+1. 임의 경로에서 압축파일 해제
+
+#tar xvzf gcc-repo.tar.gz
+
+
+
+2. 로컬 리포 설정 파일 추가
+# vi /etc/yum.repos.d/local-repo.repo
+----------------
+
+[local-repo]
+name=local-repo
+baseurl=file://${디렉토리} # 위 gcc-repo.tar.gz를 푼 디렉터리의 절대경로 ex) file:///root/test#
+gpgcheck=0
+enabled=1
+----------------
+3. gcc 설치 진행
+
+#yum -y install gcc
+
+
+
+4. gcc 설치 확인 후  로컬 리포 설정파일 삭제
+
+#gcc --help
+
+#rm /etc/yum.repos.d/local-repo.repo
+
+
+
+
+
 GCC 설치 이후
 
 tar xvf <redis tar>

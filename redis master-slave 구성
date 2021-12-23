@@ -1,0 +1,73 @@
+구성 정보
+IP: 192.168.0.157
+Port: 7100,7101,7102
+
+IP: 192.168.0.158
+Port: 7103,7104,7105
+
+[Redis config]
+Port 7100
+cluster-enabled yes
+cluster-config-file master-1.conf
+cluster-node-timeout 5000
+appendonly no
+daemonize yes
+logfile redis_7100.log
+dir /root/redis-5.0.11/data
+requirepass kbsys1234
+masterauth kbsys1234
+
+redis 패스워드 설정 시 masterauth 설정을 반드시 추가해야 함
+*해당 설정 제외 시 slave -> master 역활을 수행하는데에 인증관련 에러 발생
+
+redis cluster 생성
+*해당 옵션은 master slave 랜덤으로 지정되어 클러스터링 됨
+./redis-cli --cluster create 192.168.0.157:7100 192.168.0.157:7101 192.168.0.157:7102 192.168.0.158:7103 192.168.0.158:7104 192.168.0.158:7105 --cluster-replicas 1 -a kbsys1234
+
+#결과
+
+[root@localhost conf]# redis-cli -c -p 7100 -a kbsys1234
+Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+127.0.0.1:7100> cluster nodes
+35d87367ae4c3c68a6161141a0fb35b6dd28d404 192.168.0.158:7104@17104 slave 8ad3c9a2e1781997094ae4c69eb40fac2712808c 0 1636617167501 5 connected
+2417148e766415761db8e983146a78becc92ce16 192.168.0.158:7103@17103 master - 0 1636617167000 4 connected 5461-10922
+85dbbc0ef79145f93a7115c475b1b27ccfa9d53f 192.168.0.157:7100@17100 myself,master - 0 1636617167000 1 connected 0-5460
+75bf292cb66aada1db19a3cd2922370aed24f309 192.168.0.157:7102@17102 slave 2417148e766415761db8e983146a78becc92ce16 0 1636617167000 4 connected
+9144a7263037f66395023ca19aa4be24f22ed35a 192.168.0.158:7105@17105 slave 85dbbc0ef79145f93a7115c475b1b27ccfa9d53f 0 1636617167406 6 connected
+8ad3c9a2e1781997094ae4c69eb40fac2712808c 192.168.0.157:7101@17101 master - 0 1636617168524 2 connected 10923-16383
+
+현재 master - slave 구성
+7101 master <-> 7104 slave
+7103 master <-> 7102 slave
+7100 master <-> 7105 slave
+
+192.168.0.158(7103[master], 7104[slave], 7105[slave]) 서버 다운 시 다운된 7103[master]를 대체하여 7102[slave]가 마스터 역할을 정상적으로 수행하는 것을 확인(1~2분 소요)
+#결과
+
+127.0.0.1:7100> cluster nodes
+35d87367ae4c3c68a6161141a0fb35b6dd28d404 192.168.0.158:7104@17104 slave,fail 8ad3c9a2e1781997094ae4c69eb40fac2712808c 1636617256776 1636617255274 5 disconnected
+2417148e766415761db8e983146a78becc92ce16 192.168.0.158:7103@17103 master,fail - 1636617255514 1636617254000 4 disconnected
+85dbbc0ef79145f93a7115c475b1b27ccfa9d53f 192.168.0.157:7100@17100 myself,master - 0 1636617374000 1 connected 0-5460
++75bf292cb66aada1db19a3cd2922370aed24f309 192.168.0.157:7102@17102 master - 0 1636617375606 8 connected 5461-10922+
+9144a7263037f66395023ca19aa4be24f22ed35a 192.168.0.158:7105@17105 slave,fail 85dbbc0ef79145f93a7115c475b1b27ccfa9d53f 1636617260357 1636617259549 6 disconnected
+8ad3c9a2e1781997094ae4c69eb40fac2712808c 192.168.0.157:7101@17101 master - 0 1636617376622 2 connected 10923-16383
+
+데이터 값 호출 확인
+[서버 다운 이전]
+127.0.0.1:7100> set 1 "node1"
+OK
+127.0.0.1:7101> set 2 "node2"
+OK
+127.0.0.1:7103> set 3 "node3"
+OK
+
+각각 7100[master1], 7101[master2], 7103[master3] 데이터 저장
+
+[서버 다운 후]
+127.0.0.1:7100> get 3
+-> Redirected to slot [9842] located at 192.168.0.157:7102
+"oh"
+
+위처럼 redis cluster 구성 시 master가 최소 3대 이상 존재해야하기 때문에 slave가 죽은 master를 대체하여 데이터 값을 불러옴
+
+테스트 완료

@@ -40,6 +40,15 @@ redis-cli -p 7102 -a kbsys1234 shutdown
 
 
 redis cluster 생성
+*해당 옵션은 master 3개를 클러스터링화함
+./redis-cli --cluster create 110.45.156.133:7600 110.45.156.133:7601 110.45.156.133:7602 -a kbsys1234
+
+이후 master 쪽에 slave 한대씩 생성
+
+./redis-cli -a kbsys1234 --cluster add-node {slave-ip} {master ip} --cluster-slave --cluster-master-id {master-id 값}
+
+
+
 *해당 옵션은 master slave 랜덤으로 지정되어 클러스터링 됨
 ./redis-cli --cluster create 192.168.0.157:7100 192.168.0.157:7101 192.168.0.157:7102 192.168.0.158:7103 192.168.0.158:7104 192.168.0.158:7105 --cluster-replicas 1 -a kbsys1234
 
